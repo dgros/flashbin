@@ -210,3 +210,4 @@ void ecrire_dans_log(char *dossier)
 	fclose(fichier_log);
 	//		pthread_mutex_unlock (& mutex_fichier_log);
 }
+
