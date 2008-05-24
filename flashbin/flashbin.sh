@@ -8,7 +8,7 @@
 #"H6LOD3Q9YL925WB0"
 #0700077A12A10233
 
-configfile="/home/utilisateur/workspace/flashbin/flashbin.conf"
+configfile="/home/gabriel/workspace/flashbin/flashbin.conf"
 
 # detect the key with udev
 udev_dem()
@@ -45,23 +45,20 @@ echo "End of key détection"
 # Create the devices mtdX and mtdblockX used by logfs, jffs2 and ubi filesystems
 create_dev()
 {
-# Create the devices in /dev , we use the MAKEDEV script from the sources of mtd-utils
-echo "Emulating mtd devices for your block devices"
+
 device=$1
 
-shell=`env | grep "^SHELL=" | cut -d'/' -f3`
+# Create the devices in /dev 
+echo "Emulating mtd devices for your block devices"
 
-        echo "Création des devices"
-        if [ $shell = "bash" ] 
-                then
-                         echo "on makedev"
-#                        bash MAKEDEV #(pour le bash)
-        else 
-                        echo "You should use bash to create your devices"
-                        echo ""
-        fi
+for a in `seq 0 16` ; do
+	mknod /dev/mtd$a c 90 `expr $a + $a`
+	mknod /dev/mtdblock$a b 31 $a
+done	
+
 
 partitions=`sed -n '/\[partitions\]/,/\[\/partitions\]/{//d;p}' $configfile | awk '{ print $1 }' | tr '\n' ' ' `
+
 set $partitions
 
 for i
@@ -69,16 +66,15 @@ do
 modprobe_parameters="$modprobe_parameters block2mtd=/dev/$device$i"
 echo $modprobe_parameters
 done
+
 modprobe block2mtd $modprobe_parameters
 
 }
 
-user=`env | grep "^USER=" | cut -d'=' -f2`
-
-if [ $user != "root" ]
-then
-echo "you should run this script as root"
-
+if [ "$(id -u)" != "0" ]; then
+    echo "you should run this script as root"
+    exit 1
+    
 else
-udev_dem
+	udev_dem
 fi
