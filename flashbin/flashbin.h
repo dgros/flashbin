@@ -15,6 +15,8 @@ void fichier_configuration();
 void coupe_nom(char *dossier, char *buffer);
 void *verification(char *dossier);
 void ecrire_dans_log(char *dossier);
+void sys_log(char *erreur);
+void gestionnaire(int numero);
 
 typedef struct {
 	char debut[300];
