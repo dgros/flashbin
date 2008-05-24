@@ -52,10 +52,14 @@ int main(int argc, char *argv[])
 	FILE *fichier_log;
 	int ret, taille;
 	log_fic *l=(log_fic *)malloc(sizeof(log_fic));
-	
+	if(argv[1]== "flash")
+	strcpy(l->way,"way = flashtodisk");
+	else
+	strcpy(l->way,"way = disktoflash");
+
 	strcpy(l->debut,"#flashbin.log\n#Synchronisation\nsynchronisation =");
 	strcpy(l->synch,"yes");
-	strcpy(l->way,"way = flashtodisk");
+	//strcpy(l->way,"way = flashtodisk");
 	strcpy(l->bin,"/usr/bin =");
 	strcpy(l->lib,"/usr/lib =");
 	strcpy(l->var,"/var =");
@@ -73,7 +77,7 @@ int main(int argc, char *argv[])
 	{
 		ret=fwrite(fichier,1,taille ,fichier_log);
 		fclose(fichier_log);
-		fichier_configuration();
+		fichier_configuration(argv[1]);
 	}
 	return 0;
 }
@@ -150,6 +154,7 @@ void * verification(char *dossier)
 
   sigaction(SIGUSR1	, &sig, NULL); 
   sigaction(SIGUSR2	, &sig, NULL); 
+  
   // On lit dans la structure stat la date de modification des dossiers
   stat(dossier, &statbuf_1);
   time_1=ctime(&statbuf_1.st_mtime);
@@ -164,9 +169,7 @@ void * verification(char *dossier)
 			//Si le dossier est modifié
 			if(strcmp(time_1, temporaire) != 0)
 			{
-	//		pthread_mutex_lock (& mutex_fct_log);
 			ecrire_dans_log(dossier);
-	//	pthread_mutex_unlock (& mutex_fct_log);
 			}
    
   		 sleep(5);
@@ -184,6 +187,7 @@ void ecrire_dans_log(char *dossier)
 	char *nombre=(char *)malloc(sizeof(char));
 	char buffer_temp[BUFSIZ];
 	char *dos_bin;
+	char *way_t=(char *)malloc(sizeof(char));
 	log_fic *l=(log_fic *)malloc(sizeof(log_fic));
 	
 	//On récupére le fichier dans un buffer pour traitement
@@ -192,8 +196,12 @@ void ecrire_dans_log(char *dossier)
 	
 	pthread_mutex_lock (& mutex_fichier_log);
 	fichier_log=fopen("flashbin.log", "r");
+	
 	if(fichier_log==NULL)
+	{
 		sys_log("Impossible de créer un fichier dans /var/log/");
+		pthread_mutex_lock (& mutex_fichier_log);
+	}
 	
 	else 
 	{
@@ -201,6 +209,9 @@ void ecrire_dans_log(char *dossier)
 		fclose(fichier_log);
 		pthread_mutex_unlock (& mutex_fichier_log);
 		
+		way_t=strstr(buffer,"way");
+		strncpy(l->way,way_t,17);
+
 		dos_bin=NULL;
 		taille=strlen(buffer); // On stocke la première taille du buffer
 		dos_bin=strstr(buffer, "/usr/bin")+11;
@@ -233,7 +244,6 @@ void ecrire_dans_log(char *dossier)
 	
 		strcpy(l->debut,"#flashbin.log\n#Synchronisation\nsynchronisation =");
 		strcpy(l->synch,"no");
-		strcpy(l->way,"way = flashtodisk");
 		strcpy(l->bin,"/usr/bin =");
 		strcpy(l->lib,"/usr/lib =");
 		strcpy(l->var,"/var =");
@@ -245,8 +255,9 @@ void ecrire_dans_log(char *dossier)
 		ret=fwrite(buffer,1,taille ,fichier_log);
 		fclose(fichier_log);
 		//		pthread_mutex_unlock (& mutex_fichier_log);
-
-		free(dos_bin);
+		
+		//free(way_t);
+		//free(dos_bin);
 		free(l);
 		free(nombre);
 	}
