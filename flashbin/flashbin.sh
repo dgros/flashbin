@@ -64,7 +64,6 @@ set $partitions
 for i
 do
 modprobe_parameters="$modprobe_parameters block2mtd=/dev/$device$i"
-echo $modprobe_parameters
 done
 
 modprobe block2mtd $modprobe_parameters
