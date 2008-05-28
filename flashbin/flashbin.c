@@ -1,44 +1,15 @@
 // gcc -Wall -o flashbin flashbin.c -lpthread -D_REENTRANT
-/* CrÃ©Ã© le 15 mai 2008
+/* CrÃƒÂ©ÃƒÂ© le 15 mai 2008
  * TODO : 
- * -> Regarder les dossiers Ã  surveiller : Ok
- * -> Savoir si les dossiers sont modifiÃ©s : Ok
+ * -> Regarder les dossiers Ãƒ  surveiller : Ok
+ * -> Savoir si les dossiers sont modifiÃƒÂ©s : Ok
  * -> Recopie des dossiers dans le fichier de log : Ok
- * -> Savoir la "route" : flashtodisk or disktoflash : A faire
- * -> Mettre en place le gestionnaire de signal : En cours
- * -> Log des erreurs avec sys_log : En cours
+ * -> Savoir la "route" : flashtodisk or disktoflash : Ok
+ * -> Mettre en place le gestionnaire de signal : Ok
+ * -> Log des erreurs avec sys_log : Ok
  * -> Les descripteurs : A faire
  * -> Autre : subsequement, A faire
  * */
-/*#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <time.h>
-#include <pthread.h>
-
-pthread_mutex_t	mutex_fichier_log = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t	mutex_fct_log = PTHREAD_MUTEX_INITIALIZER;
-
-void fichier_configuration();
-void coupe_nom(char *dossier, char *buffer);
-void *verification(char *dossier);
-void ecrire_dans_log(char *dossier);
-
-typedef struct {
-	char debut[300];
-	char synch[10];
-	char way[100];
-	char bin[30];
-	int  b_m;
-	char lib[30];
-	int  l_m;
-	char var[30];
-	int v_m;
-	
-}log_fic;*/
 #include "flashbin.h"
 
 pthread_mutex_t	mutex_fichier_log = PTHREAD_MUTEX_INITIALIZER;
@@ -69,15 +40,22 @@ int main(int argc, char *argv[])
 	sprintf(fichier, "%s %s\n%s \n%s %i\n%s %i\n%s %i\n",l->debut, l->synch,l->way, l->bin, l->b_m, l->lib, l->l_m, l->var, l->v_m);
 	
 	taille=strlen(fichier);
-	fichier_log=fopen("flashbin.log", "w");
 	
-	if(fichier_log==NULL)
-		sys_log("Impossible de crÃ©er un fichier dans /var/log/");
-
+	if((fichier_log=fopen("flashbin.log", "r"))==NULL)
+	{
+		fichier_log=fopen("flashbin.log", "w");
+		if(fichier_log==NULL)
+			sys_log("Impossible de crÃƒÂ©er un fichier dans /var/log/");
+	
+		else
+		{
+			ret=fwrite(fichier,1,taille ,fichier_log);
+			fclose(fichier_log);
+			fichier_configuration();
+		}
+	}
 	else
 	{
-		ret=fwrite(fichier,1,taille ,fichier_log);
-		fclose(fichier_log);
 		fichier_configuration();
 	}
 	return 0;
@@ -97,7 +75,7 @@ void fichier_configuration()
 	pthread_t pth;
 	
 	
-	// On rÃ©cupÃ¨re le contenu du fichier dans un buffer
+	// On rÃƒÂ©cupÃƒÂ¨re le contenu du fichier dans un buffer
 	fichier_conf=fopen("flashbin.conf", "r");
 	if(fichier_conf==NULL)
 		sys_log("Impossible d'ouvrir le fichier de configuration");
@@ -106,7 +84,7 @@ void fichier_configuration()
 		ret=fread(buffer,1,sizeof(buffer) ,fichier_conf);
 		fclose(fichier_conf);
 
-		// On recupÃ¨re le nom de chaque dossier Ã  "monitorer"
+		// On recupÃƒÂ¨re le nom de chaque dossier Ãƒ  "monitorer"
 		temp=strstr(buffer,"/usr/bin");
 		coupe_nom(premier_dossier,temp);
 		
@@ -146,6 +124,7 @@ void * verification(char *dossier)
 {
   struct stat statbuf_1;
   char *time_1;
+  char modification[100];
   char temporaire[100];
   
   struct sigaction sig;
@@ -154,7 +133,7 @@ void * verification(char *dossier)
   sig.sa_handler = gestionnaire;
 
   sigaction(SIGHUP, &sig, NULL); 
-   
+  
   // On lit dans la structure stat la date de modification des dossiers
   stat(dossier, &statbuf_1);
   time_1=ctime(&statbuf_1.st_mtime);
@@ -162,11 +141,13 @@ void * verification(char *dossier)
 
 	while(1)
    		{
-		 stat(dossier, &statbuf_1);
-    	 time_1=ctime(&statbuf_1.st_mtime);
-   		 printf("%s", time_1);
+		 sprintf(modification, "./modification.sh %s", dossier);
+                 	if(system(modification)==1) sys_log("Impossible de lancer le script de modification");
+                 stat(dossier, &statbuf_1);
+    	         time_1=ctime(&statbuf_1.st_mtime);
+   		 printf("%s %s",dossier, time_1);
 	  		
-			//Si le dossier est modifiÃ©
+			//Si le dossier est modifiÃƒÂ©
 			if(strcmp(time_1, temporaire) != 0)
 			{
 			ecrire_dans_log(dossier);
@@ -190,7 +171,7 @@ void ecrire_dans_log(char *dossier)
 	char *way_t=(char *)malloc(sizeof(char));
 	log_fic *l=(log_fic *)malloc(sizeof(log_fic));
 	
-	//On rÃ©cupÃ©re le fichier dans un buffer pour traitement
+	//On rÃƒÂ©cupÃƒÂ©re le fichier dans un buffer pour traitement
 	strcpy(buffer_temp, "");
 	strcpy(buffer, "");
 	
@@ -199,7 +180,7 @@ void ecrire_dans_log(char *dossier)
 	
 	if(fichier_log==NULL)
 	{
-		sys_log("Impossible de crÃ©er un fichier dans /var/log/");
+		sys_log("Impossible de crÃƒÂ©er un fichier dans /var/log/");
 		pthread_mutex_lock (& mutex_fichier_log);
 	}
 	
@@ -213,7 +194,7 @@ void ecrire_dans_log(char *dossier)
 		strncpy(l->way,way_t,17);
 
 		dos_bin=NULL;
-		taille=strlen(buffer); // On stocke la premiÃ¨re taille du buffer
+		taille=strlen(buffer); // On stocke la premiÃƒÂ¨re taille du buffer
 		dos_bin=strstr(buffer, "/usr/bin")+11;
 		strncpy(nombre, dos_bin,1);
 
@@ -262,5 +243,6 @@ void ecrire_dans_log(char *dossier)
 		free(nombre);
 	}
 }	
+
 
 
