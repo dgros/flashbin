@@ -8,8 +8,8 @@
 #"H6LOD3Q9YL925WB0"
 # 0700077A12A10233
 
-flashbin_configfile="/home/gabriel/flashbin.conf"
-flashbin_logfile="/home/gabriel/flashbin.log"
+flashbin_configfile="/home/utilisateur/workspace/flashbin_kiki/flashbin/flashbin.conf"
+flashbin_logfile="/home/utilisateur/workspace/flashbin_kiki/flashbin/flashbin.log"
 
 # detect the key with udev
 flashbin_run()
@@ -184,6 +184,9 @@ else
          done
      fi
 fi
+
+./flashbin flash
+
 }
 
 flashbin_status()
