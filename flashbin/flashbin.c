@@ -15,6 +15,9 @@
 pthread_mutex_t	mutex_fichier_log = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t	mutex_fct_log = PTHREAD_MUTEX_INITIALIZER;
 
+char premier_dossier[100];
+char deuxieme_dossier[100];
+char troisieme_dossier[100];
 
 
 int main(int argc, char *argv[])
@@ -23,21 +26,25 @@ int main(int argc, char *argv[])
 	FILE *fichier_log;
 	int ret, taille;
 	log_fic *l=(log_fic *)malloc(sizeof(log_fic));
+	
+	
 	if(argv[1]== "flash")
-	strcpy(l->way,"way = flashtodisk");
+		strcpy(l->way,"way = flashtodisk");
 	else
-	strcpy(l->way,"way = disktoflash");
+		strcpy(l->way,"way = disktoflash");
 
-	strcpy(l->debut,"#flashbin.log\n#Synchronisation\nsynchronisation =");
+	strcpy(l->debut,"#flashbin.log\n#Synchronisation\nsynchronized =");
 	strcpy(l->synch,"yes");
-	//strcpy(l->way,"way = flashtodisk");
+	strcpy(l->path, "[paths]");
+	// On crée par défaut le fichier de log avec les dossiers standart
 	strcpy(l->bin,"/usr/bin =");
 	strcpy(l->lib,"/usr/lib =");
 	strcpy(l->var,"/var =");
 	l->b_m=0;
 	l->l_m=0;
 	l->v_m=0;
-	sprintf(fichier, "%s %s\n%s \n%s %i\n%s %i\n%s %i\n",l->debut, l->synch,l->way, l->bin, l->b_m, l->lib, l->l_m, l->var, l->v_m);
+	strcpy(l->path_end, "[/paths]");
+	sprintf(fichier, "%s %s\n%s \n%s\n%s %i\n%s %i\n%s %i\n%s\n",l->debut, l->synch,l->way,l->path, l->bin, l->b_m, l->lib, l->l_m, l->var, l->v_m, l->path_end);
 	
 	taille=strlen(fichier);
 	
@@ -45,7 +52,7 @@ int main(int argc, char *argv[])
 	{
 		fichier_log=fopen("flashbin.log", "w");
 		if(fichier_log==NULL)
-			sys_log("Impossible de crÃƒÂ©er un fichier dans /var/log/");
+			sys_log("Impossible de créer un fichier dans /var/log/");
 	
 		else
 		{
@@ -68,14 +75,14 @@ void fichier_configuration()
 	FILE *fichier_conf;
 	char buffer[BUFSIZ];
 	char *temp;
-	char premier_dossier[100];
-	char deuxieme_dossier[100];
-	char troisieme_dossier[100];
+//	char premier_dossier[100];
+//	char deuxieme_dossier[100];
+//	char troisieme_dossier[100];
 	int ret; 
 	pthread_t pth;
 	
 	
-	// On rÃƒÂ©cupÃƒÂ¨re le contenu du fichier dans un buffer
+	// On récupèrere le contenu du fichier dans un buffer
 	fichier_conf=fopen("flashbin.conf", "r");
 	if(fichier_conf==NULL)
 		sys_log("Impossible d'ouvrir le fichier de configuration");
@@ -83,15 +90,17 @@ void fichier_configuration()
 	{
 		ret=fread(buffer,1,sizeof(buffer) ,fichier_conf);
 		fclose(fichier_conf);
+		
+		temp=strstr(buffer, "partitions");
 
-		// On recupÃƒÂ¨re le nom de chaque dossier Ãƒ  "monitorer"
-		temp=strstr(buffer,"/usr/bin");
+		// On recupére le nom de chaque dossier à "monitorer"
+		temp=strstr(temp,"/");
 		coupe_nom(premier_dossier,temp);
 		
-		temp=strstr(buffer,"/usr/lib");
+		temp=strstr(temp+strlen(premier_dossier),"/");
 		coupe_nom(deuxieme_dossier,temp);
 	
-		temp=strstr(buffer,"/var");
+		temp=strstr(temp+strlen(deuxieme_dossier),"/");
 		coupe_nom(troisieme_dossier,temp);
 	
 		printf("%s\n%s\n%s\n", premier_dossier, deuxieme_dossier, troisieme_dossier);
@@ -147,7 +156,7 @@ void * verification(char *dossier)
     	         time_1=ctime(&statbuf_1.st_mtime);
    		 printf("%s %s",dossier, time_1);
 	  		
-			//Si le dossier est modifiÃƒÂ©
+			//Si le dossier est modifié
 			if(strcmp(time_1, temporaire) != 0)
 			{
 			ecrire_dans_log(dossier);
@@ -171,7 +180,7 @@ void ecrire_dans_log(char *dossier)
 	char *way_t=(char *)malloc(sizeof(char));
 	log_fic *l=(log_fic *)malloc(sizeof(log_fic));
 	
-	//On rÃƒÂ©cupÃƒÂ©re le fichier dans un buffer pour traitement
+	//On récupèree le fichier dans un buffer pour traitement
 	strcpy(buffer_temp, "");
 	strcpy(buffer, "");
 	
@@ -180,7 +189,7 @@ void ecrire_dans_log(char *dossier)
 	
 	if(fichier_log==NULL)
 	{
-		sys_log("Impossible de crÃƒÂ©er un fichier dans /var/log/");
+		sys_log("Impossible de créer un fichier dans /var/log/");
 		pthread_mutex_lock (& mutex_fichier_log);
 	}
 	
@@ -195,40 +204,42 @@ void ecrire_dans_log(char *dossier)
 
 		dos_bin=NULL;
 		taille=strlen(buffer); // On stocke la premiÃƒÂ¨re taille du buffer
-		dos_bin=strstr(buffer, "/usr/bin")+11;
+		dos_bin=strstr(buffer, premier_dossier)+strlen(premier_dossier);
 		strncpy(nombre, dos_bin,1);
 
 
-		if(strcmp(dossier, "/usr/bin")==0 || atoi(nombre)==1 )
+		if(strcmp(dossier, premier_dossier)==0 || atoi(nombre)==1 )
 		{
 		l->b_m=1;
 		}
 
 		dos_bin=NULL;
-		dos_bin=strstr(buffer, "/usr/lib")+11;
+		dos_bin=strstr(buffer, deuxieme_dossier)+strlen(deuxieme_dossier);
 		strncpy(nombre, dos_bin,1);
 
 
-		if(strcmp(dossier, "/usr/lib")==0 || atoi(nombre)==1 )
+		if(strcmp(dossier, deuxieme_dossier)==0 || atoi(nombre)==1 )
 		{
 		l->l_m=1;
 		}
 	
 		dos_bin=NULL;
-		dos_bin=strstr(buffer, "/var")+7;
+		dos_bin=strstr(buffer, troisieme_dossier)+strlen(troisieme_dossier);
 		strncpy(nombre, dos_bin,1);
 
-		if(strcmp(dossier, "/var")==0 || atoi(nombre)==1 )
+		if(strcmp(dossier, troisieme_dossier)==0 || atoi(nombre)==1 )
 		{
 		l->v_m=1;
 		}
 	
-		strcpy(l->debut,"#flashbin.log\n#Synchronisation\nsynchronisation =");
+		strcpy(l->debut,"#flashbin.log\n#Synchronisation\nsynchronized =");
 		strcpy(l->synch,"no");
-		strcpy(l->bin,"/usr/bin =");
-		strcpy(l->lib,"/usr/lib =");
-		strcpy(l->var,"/var =");
-		sprintf(buffer, "%s %s\n%s \n%s %i\n%s %i\n%s %i\n",l->debut, l->synch,l->way, l->bin, l->b_m, l->lib, l->l_m, l->var, l->v_m);
+		strcpy(l->path, "[paths]");
+		strcpy(l->path_end, "[/path]");
+		strcpy(l->bin,premier_dossier);
+		strcpy(l->lib,deuxieme_dossier);
+		strcpy(l->var,troisieme_dossier);
+		sprintf(buffer, "%s %s\n%s \n%s\n%s = %i\n%s = %i\n%s = %i\n%s\n",l->debut, l->synch,l->way,l->path, l->bin, l->b_m, l->lib, l->l_m, l->var, l->v_m, l->path_end);
 	
 		taille=strlen(buffer);
 		//		pthread_mutex_lock (& mutex_fichier_log);
