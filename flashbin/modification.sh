@@ -55,4 +55,3 @@ variable=`diff fichier_var.txt fichier_test.txt`
 	fi
 fi
 
-rm $1/fichier_modifier
