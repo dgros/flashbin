@@ -27,7 +27,6 @@ int main(int argc, char *argv[])
 	int ret, taille;
 	log_fic *l=(log_fic *)malloc(sizeof(log_fic));
 	
-	
 	if(argv[1]== "flash")
 		strcpy(l->way,"way = flashtodisk");
 	else
@@ -52,8 +51,9 @@ int main(int argc, char *argv[])
 	{
 		fichier_log=fopen("flashbin.log", "w");
 		if(fichier_log==NULL)
+		{
 			sys_log("Impossible de créer un fichier dans /var/log/");
-	
+		}
 		else
 		{
 			ret=fwrite(fichier,1,taille ,fichier_log);
@@ -74,11 +74,11 @@ void fichier_configuration()
 {	
 	FILE *fichier_conf;
 	char buffer[BUFSIZ];
-	char *temp;
-//	char premier_dossier[100];
+	char *temp=(char*)malloc(sizeof(char));
+	char dossier[100];
 //	char deuxieme_dossier[100];
 //	char troisieme_dossier[100];
-	int ret; 
+	int ret,i; 
 	pthread_t pth;
 	
 	
@@ -91,17 +91,37 @@ void fichier_configuration()
 		ret=fread(buffer,1,sizeof(buffer) ,fichier_conf);
 		fclose(fichier_conf);
 		
-		temp=strstr(buffer, "partitions");
-
+		temp=strstr(buffer, "[partitions]");
+		
 		// On recupére le nom de chaque dossier à "monitorer"
 		temp=strstr(temp,"/");
-		coupe_nom(premier_dossier,temp);
+		i=0;
+		strcpy(&dossier[0], temp);
+		while(dossier[i] != ' ')
+		{
+			premier_dossier[i]=dossier[i];
+			i++;
+		}
 		
 		temp=strstr(temp+strlen(premier_dossier),"/");
-		coupe_nom(deuxieme_dossier,temp);
-	
+		i=0;
+		strcpy(&dossier[0], temp);
+		while(dossier[i] != ' ')
+		{
+			deuxieme_dossier[i]=dossier[i];
+			i++;
+		}
+
 		temp=strstr(temp+strlen(deuxieme_dossier),"/");
-		coupe_nom(troisieme_dossier,temp);
+		//coupe_nom(troisieme_dossier,temp);
+		i=0;
+		strcpy(&dossier[0], temp);
+		while(dossier[i] != ' ')
+		{
+			troisieme_dossier[i]=dossier[i];
+			i++;
+		}
+
 	
 		printf("%s\n%s\n%s\n", premier_dossier, deuxieme_dossier, troisieme_dossier);
 
@@ -113,21 +133,6 @@ void fichier_configuration()
 	}
 }
 
-void coupe_nom(char *dossier, char *temp)
-{
-	char temp1[100];
-	int i;
-		strcpy(&temp1[0], temp);
-		i=0;
-		// On ne recopie que jusqu'au premier espace pour avoir le nom complet
-		while(temp1[i] != ' ')
-		{
-	      dossier[i]=temp1[i];
-		  i++;
-		}
-	dossier[i]='\0';
-
-}
 
 void * verification(char *dossier)
 {
@@ -162,7 +167,7 @@ void * verification(char *dossier)
 			ecrire_dans_log(dossier);
 			}
    
-  		 sleep(5);
+  		 sleep(100);
    		}
 
   return 0;
