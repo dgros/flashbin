@@ -22,12 +22,14 @@ typedef struct {
 	char debut[300];
 	char synch[10];
 	char way[100];
+	char path[10];
 	char bin[30];
 	int  b_m;
 	char lib[30];
 	int  l_m;
 	char var[30];
 	int v_m;
+	char path_end[10];
 	
 }log_fic;
 
