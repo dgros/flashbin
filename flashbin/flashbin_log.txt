@@ -2,6 +2,8 @@
 #Synchronisation
 synchronisation = yes
 way = disktoflash 
+[paths]
 /usr/bin = 0
 /usr/lib = 0
 /var = 0
+[/paths]
