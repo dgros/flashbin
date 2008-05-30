@@ -21,8 +21,8 @@ value=`grep "$1" $flashbin_log | cut -d"=" -f2`
 					then
 						touch $1/fichier_modifier
 						rm $1/fichier_modifier
+						cp fichier_test_b.txt fichier_bin.txt
 				fi
-				rm fichier_test*
 		fi
 fi
 
@@ -46,8 +46,8 @@ value=`grep "$1" $flashbin_log | cut -d"=" -f2`
 					then
 						touch $1/fichier_modifier
 						rm $1/fichier_modifier
+						cp fichier_test_l.txt fichier_lib.txt
 				fi
-				rm fichier_test*
 		fi
 fi
 
@@ -70,8 +70,8 @@ value=`grep "$1" $flashbin_log | cut -d"=" -f2`
 					then
 						touch $1/fichier_modifier
 						rm $1/fichier_modifier
+						cp fichier_test_v.txt fichier_var.txt
 				fi
-				rm fichier_test*
 		fi
 fi
 
