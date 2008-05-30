@@ -8,9 +8,12 @@
 #"H6LOD3Q9YL925WB0"
 # 0700077A12A10233
 
-flashbin_configfile="/home/utilisateur/workspace/flashbin_kiki/flashbin/flashbin.conf"
-flashbin_logfile="/home/utilisateur/workspace/flashbin_kiki/flashbin/flashbin.log"
+flashbin_configfile="/home/gabriel/flashbin.conf"
+flashbin_logfile="/home/gabriel/flashbin.log"
+start_daemon="./flashbin"
+synchronisation_run_file="synchonisation.run"
 
+export flag_key="false"
 # detect the key with udev
 flashbin_run()
 {
@@ -59,7 +62,6 @@ device=$1
 # Create the devices in /dev 
 echo "Emulating mtd devices for your block devices"
 
-echo "test 1"
 for a in `seq 0 16` ; do
 
 	if [ ! -c /dev/mtd$a ]
@@ -73,7 +75,6 @@ for a in `seq 0 16` ; do
 	fi
 
 done	
-echo "test2"
 
 partitions=`sed -n '/\[partitions\]/,/\[\/partitions\]/{//d;p}' $flashbin_configfile | awk '{ print $1 }' | tr '\n' ' ' `
 
@@ -84,9 +85,8 @@ do
 modprobe_parameters="$modprobe_parameters block2mtd=/dev/$device$i"
 done
 
-echo "$modprobe_parameters"
 modprobe block2mtd $modprobe_parameters
-echo "$?"
+
 flashbin_mount $device
 
 }
@@ -96,20 +96,26 @@ flashbin_mount()
 {
 device=$1
 
+# Slackware kernel 2.6.24.5
 flashbin_mt_devices=`dmesg | tail -n10 | grep block2mtd | grep erase_size | grep "\[d:" | cut -d":" -f2 | cut -d" " -f2 | tr '\n' ' '`
-#echo "MTD = $flashbin_mt_devices"
+# Debian testing kernel 2.6.26
+#flashbin_mt_devices=`dmesg | tail -n10 | grep block2mtd | grep erase_size | cut -d":" -f2 | cut -d" " -f2 | tr '\n' ' '`
+echo "MTD = $flashbin_mt_devices"
 
+# Slackware kernel 2.6.24.5
 flashbin_jffs2_table=`dmesg | tail -n10 | grep block2mtd | grep erase_size | grep "\[d:" | cut -d":" -f2 | cut -b5 | tr '\n' ' '`
-#echo "jffs3 table = $flashbin_jffs2_table"
+# Debian testing kernel 2.6.26
+#flashbin_jffs2_table=`dmesg | tail -n10 | grep block2mtd | grep erase_size |  cut -d":" -f2 | cut -d" " -f2 | cut -b4 | tr '\n' ' '`
+echo "jffs3 table = $flashbin_jffs2_table"
 
 mount_point=`sed -n '/\[partitions\]/,/\[\/partitions\]/{//d;p}' $flashbin_configfile | awk '{ print $2 }' | tr '\n' ' ' `
-#echo "point de montage = $mount_point"
+echo "point de montage = $mount_point"
 
 partitions=`sed -n '/\[partitions\]/,/\[\/partitions\]/{//d;p}' $flashbin_configfile | awk '{ print $1 }' | tr '\n' ' ' `
-#echo "partitions = $partitions"
+echo "partitions = $partitions"
 
 partitions_type=`sed -n '/\[partitions\]/,/\[\/partitions\]/{//d;p}' $flashbin_configfile | awk '{ print $3 }' | tr '\n' ' ' `
-#echo "partition type = $partitions_type "
+echo "partition type = $partitions_type "
 
 flashbin_rbind_table=`sed -n '/\[rbind_table\]/,/\[\/rbind_table\]/{//d;p}' $flashbin_configfile | awk '{ print $2 }' | tr '\n' ' ' `
 
@@ -124,14 +130,15 @@ case "$j" in
           flashbin_partition=`echo $partitions | cut -d" " -f$compteur`
           flashbin_mountpoint=`echo $flashbin_rbind_table | cut -d" " -f$compteur`
           flashbin_rbind_mountpoint=`echo $mount_point | cut -d" " -f$compteur`
-	  echo "logfs: $flashbin_mountpoint $flashbin_partition $flashbin_rbind_mountpoint"
-          echo " rbind parm : $flashbin_rbind_mountpoint $flashbin_mountpoint$dup"
+#	  echo "logfs: $flashbin_mountpoint $flashbin_partition $flashbin_rbind_mountpoint"
+#          echo " rbind parm : $flashbin_rbind_mountpoint $flashbin_mountpoint$dup"
 #          mount --rbind $flashbin_rbind_mountpoint $flashbin_mountpoint$dup 
 #	  mount -t logfs $flashbin_partition $flashbin_mountpoint && mount --rbind $flashbin_mountpoint $flashbin_rbind_mountpoint &
      ;;
      jffs2)
           flashbin_mtdblock=`echo $flashbin_jffs2_table | cut -d" " -f $compteur`
-          flashbin_partition="/dev/mtdblock$flashbin_mtdblock"
+echo "n° de partoche $flashbin_mtdblock"
+	  flashbin_partition="/dev/mtdblock$flashbin_mtdblock"
           flashbin_mountpoint=`echo $flashbin_rbind_table | cut -d" " -f $compteur`
           flashbin_rbind_mountpoint=`echo $mount_point | cut -d" " -f$compteur`
           echo "jffs2: $flashbin_partition $flashbin_mountpoint $flashbin_rbind_mountpoint"
@@ -145,7 +152,6 @@ case "$j" in
 esac
 done
 
-flashbin_synchronize
 
 }
 
@@ -157,35 +163,68 @@ return 0
 
 flashbin_synchronize()
 {
-flashbin_synchronize_flag=`grep "synchronized" $flashbin_logfile | cut -d"=" -f2`
-if [ "$flashbin_synchronize_flag" = yes ]
-then
 
-   return 0
+# detecting the key before synchonization
+read_serial=`sed -n '/\[serial\]/,/\[\/serial\]/{//d;p}' $flashbin_configfile`
+variable=`ls /sys/block | grep sd?*`
+set $variable
 
-else
-     flashbin_synchronize_way=`grep "way" $flashbin_logfile | cut -d"=" -f2`
-     flashbin_path_to_synchonize=`sed -n '/\[paths\]/,/\[\/paths\]/{//d;p}' $flashbin_logfile | grep 1 | awk '{ print $1 }' | tr '\n' ' ' `
-#     flashbin_rbind_table=`sed -n '/\[rbind_table\]/,/\[\/rbind_table\]/{//d;p}' $flashbin_configfile | awk '{ print $2 }' | tr '\n' ' ' `
-     if [ "$flashbin_synchronize_way"="flashtodisk" ]
+serial=1
+
+while [ -n "$1" ]
+do
+
+  serial=`/usr/bin/udevinfo -a -p /sys/block/$1 | grep -m1 serial | cut -d'=' -f3 | cut -d'"' -f2`
+
+  if  [ "$serial" = "$read_serial" ]
+  then
+export     flag_key="true"
+
+     flashbin_synchronize_flag=`grep "synchronized" $flashbin_logfile | cut -d"=" -f2`
+     if [ "$flashbin_synchronize_flag" = yes ]
      then
-         for i in $flashbin_path_to_synchonize
-         do
-    		# cp -ru  `sed -n '/\[rbind_table\]/,/\[\/rbind_table\]/{//d;p}' $flashbin_configfile | grep "$i" | awk '{ print $2 }'` `sed -n '/\[rbind_table\]/,/\[\/rbind_table\]/{//d;p}' $flashbin_configfile | grep "$i" | awk '{ print $2 }'`$dup 
-		 plop=`sed -n '/\[rbind_table\]/,/\[\/rbind_table\]/{//d;p}' $flashbin_configfile | grep "$i" | awk '{ print $2 }'`$dup
-                 echo " PLOP $plop"
-	 done
-     elif [ "$flashbin_synchronize_way"="disktoflash" ]
-     then
-	 for i in $flashbin_path_to_synchonize
-	 do
-		 echo ""
-#	     cp -ru `sed -n '/\[rbind_table\]/,/\[\/rbind_table\]/{//d;p}' $flashbin_configfile | grep "$i" | awk '{ print $2 }'` $i
-         done
-     fi
-fi
+        return 0
+     else
+        flashbin_synchronize_way=`grep "way" $flashbin_logfile | cut -d"=" -f2`
+        flashbin_path_to_synchonize=`sed -n '/\[paths\]/,/\[\/paths\]/{//d;p}' $flashbin_logfile | grep 1 | awk '{ print $1 }' | tr '\n' ' ' `
+        killall -SIGUSR1 flashbin  
+	#flashbin_rbind_table=`sed -n '/\[rbind_table\]/,/\[\/rbind_table\]/{//d;p}' $flashbin_configfile | awk '{ print $2 }' | tr '\n' ' ' `
+        if [ "$flashbin_synchronize_way"="flashtodisk" ]
+        then
+           for i in $flashbin_path_to_synchonize
+           do
+    	       #cp -ru  `sed -n '/\[rbind_table\]/,/\[\/rbind_table\]/{//d;p}' $flashbin_configfile | grep "$i" | awk '{ print $2 }'` `sed -n '/\[rbind_table\]/,/\[\/rbind_table\]/{//d;p}' $flashbin_configfile | grep "$i" | awk '{ print $2 }'`$dup 
+	       plop=`sed -n '/\[rbind_table\]/,/\[\/rbind_table\]/{//d;p}' $flashbin_configfile | grep "$i" | awk '{ print $2 }'`$dup
+               echo " PLOP $plop"
+	   done
+        elif [ "$flashbin_synchronize_way"="disktoflash" ]
+        then
+	  for i in $flashbin_path_to_synchonize
+	  do
+	     echo ""
+	     #cp -ru `sed -n '/\[rbind_table\]/,/\[\/rbind_table\]/{//d;p}' $flashbin_configfile | grep "$i" | awk '{ print $2 }'` $i
+          done
+        fi
 
-./flashbin flash
+     
+
+
+   fi #end of synchonize_flag = yes
+
+    break
+  else
+     flashbin_device="erreur";
+  fi # end of serial detection
+     shift 1
+
+  if [ -f  $synchronisation_run_file ]
+  then
+    	  rm $synchronisation_run_file
+  fi
+done
+
+
+# flashbin flash
 
 }
 
@@ -204,8 +243,15 @@ else
 case "$1" in 
      start)
 		flashbin_run
+		flashbin_synchronize
+if [ "$flag_key" = "true" ]
+then
+		$start_daemon flash
+else
+		$start_daemon
+fi
      ;;
-     synchonize)
+     synchronize)
         flashbin_synchronize
      ;;
      status)
