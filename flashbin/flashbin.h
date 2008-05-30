@@ -14,6 +14,7 @@
 void fichier_configuration();
 void coupe_nom(char *dossier, char *buffer);
 void *verification(char *dossier);
+void *synchronisation();
 void ecrire_dans_log(char *dossier);
 void sys_log(char *erreur);
 void gestionnaire(int numero);
