@@ -129,6 +129,7 @@ void fichier_configuration()
 		pthread_create(&pth, NULL, (void *) verification, premier_dossier);
 		pthread_create(&pth, NULL, (void *) verification, deuxieme_dossier);
 		pthread_create(&pth, NULL, (void *) verification, troisieme_dossier);
+		pthread_create(&pth, NULL, (void *) synchronisation , NULL);
 		pthread_exit(NULL);
 	}
 }
@@ -141,7 +142,7 @@ void * verification(char *dossier)
   char modification[100];
   char temporaire[100];
   
-  struct sigaction sig;
+struct sigaction sig;
 
   sig.sa_flags = 0;
   sig.sa_handler = gestionnaire;
@@ -247,11 +248,11 @@ void ecrire_dans_log(char *dossier)
 		sprintf(buffer, "%s %s\n%s \n%s\n%s = %i\n%s = %i\n%s = %i\n%s\n",l->debut, l->synch,l->way,l->path, l->bin, l->b_m, l->lib, l->l_m, l->var, l->v_m, l->path_end);
 	
 		taille=strlen(buffer);
-		//		pthread_mutex_lock (& mutex_fichier_log);
+				pthread_mutex_lock (& mutex_fichier_log);
 	    fichier_log=fopen("flashbin.log", "w");
 		ret=fwrite(buffer,1,taille ,fichier_log);
 		fclose(fichier_log);
-		//		pthread_mutex_unlock (& mutex_fichier_log);
+				pthread_mutex_unlock (& mutex_fichier_log);
 		
 		//free(way_t);
 		//free(dos_bin);
@@ -261,4 +262,18 @@ void ecrire_dans_log(char *dossier)
 }	
 
 
+void *synchronisation()
+{
+	FILE * fichier_syn;
 
+	while(1)
+	{
+		sleep(30);
+		if( (fichier_syn=fopen("synchronisation.run", "r")) == NULL)
+		{	
+		fichier_syn=fopen("synchronisation.run", "w");
+		fclose(fichier_syn);
+		system("./flashbin.sh synchronize && rm synchronisation.run");
+		}
+	}
+}
