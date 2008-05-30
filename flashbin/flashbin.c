@@ -1,4 +1,4 @@
-// gcc -Wall -o flashbin flashbin.c -lpthread -D_REENTRANT
+	// gcc -Wall -o flashbin flashbin.c -lpthread -D_REENTRANT
 /* CrÃƒÂ©ÃƒÂ© le 15 mai 2008
  * TODO : 
  * -> Regarder les dossiers Ãƒ  surveiller : Ok
