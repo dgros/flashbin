@@ -11,7 +11,7 @@ if [ "$1" = "/usr/bin" ]
 		fi
 value=`grep "$1" $flashbin_log | cut -d"=" -f2`
 	
-		if [ $value = 0 ]
+		if [ "$value" = "0" ]
 			then
 				`ls -Rl $1 > fichier_test_b.txt`
 
@@ -36,7 +36,7 @@ if [ "$1" = "/usr/lib" ]
 		fi
 
 value=`grep "$1" $flashbin_log | cut -d"=" -f2`
-		if [ $value = 0 ]
+		if [ "$value" = "0" ]
 			then
 				`ls -Rl $1 > fichier_test_l.txt`
 
@@ -60,7 +60,7 @@ if [ "$1" = "/var" ]
 				`ls -Rl $1 > fichier_var.txt`
 		fi
 value=`grep "$1" $flashbin_log | cut -d"=" -f2`
-		if [ $value = 0 ]
+		if [ "$value" = "0" ]
 			then
 				`ls -Rl $1 > fichier_test_v.txt`
 
