@@ -18,7 +18,7 @@ pthread_mutex_t	mutex_fct_log = PTHREAD_MUTEX_INITIALIZER;
 char premier_dossier[100];
 char deuxieme_dossier[100];
 char troisieme_dossier[100];
-
+char way_save[100];
 
 int main(int argc, char *argv[])
 {
@@ -32,6 +32,7 @@ int main(int argc, char *argv[])
 	else
 		strcpy(l->way,"way = disktoflash");
 
+    strcpy(way_save,l->way);
 	strcpy(l->debut,"#flashbin.log\n#Synchronisation\nsynchronized =");
 	strcpy(l->synch,"yes");
 	strcpy(l->path, "[paths]");
@@ -148,6 +149,7 @@ struct sigaction sig;
   sig.sa_handler = gestionnaire;
 
   sigaction(SIGHUP, &sig, NULL); 
+  sigaction(SIGUSR1, &sig, NULL); 
   
   // On lit dans la structure stat la date de modification des dossiers
   stat(dossier, &statbuf_1);
