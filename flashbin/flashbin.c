@@ -1,19 +1,11 @@
-	// gcc -Wall -o flashbin flashbin.c -lpthread -D_REENTRANT
-/* CrÃƒÂ©ÃƒÂ© le 15 mai 2008
- * TODO : 
- * -> Regarder les dossiers Ãƒ  surveiller : Ok
- * -> Savoir si les dossiers sont modifiÃƒÂ©s : Ok
- * -> Recopie des dossiers dans le fichier de log : Ok
- * -> Savoir la "route" : flashtodisk or disktoflash : Ok
- * -> Mettre en place le gestionnaire de signal : Ok
- * -> Log des erreurs avec sys_log : Ok
- * -> Les descripteurs : A faire
- * -> Autre : subsequement, A faire
+/* Deamon for flashbin project
+ * Created 15, MAY 2008
+ * Author : Gabriel SALLES-LOUSTAU & Damien GROS
+ * To run this deamon as an program, execute with root rights
  * */
 #include "flashbin.h"
 
 pthread_mutex_t	mutex_fichier_log = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t	mutex_fct_log = PTHREAD_MUTEX_INITIALIZER;
 
 char premier_dossier[100];
 char deuxieme_dossier[100];
@@ -36,7 +28,7 @@ int main(int argc, char *argv[])
 	strcpy(l->debut,"#flashbin.log\n#Synchronisation\nsynchronized =");
 	strcpy(l->synch,"yes");
 	strcpy(l->path, "[paths]");
-	// On crée par défaut le fichier de log avec les dossiers standart
+	// Create flashbin.log if it does'nt exist.
 	strcpy(l->bin,"/usr/bin =");
 	strcpy(l->lib,"/usr/lib =");
 	strcpy(l->var,"/var =");
@@ -77,13 +69,11 @@ void fichier_configuration()
 	char buffer[BUFSIZ];
 	char *temp=(char*)malloc(sizeof(char));
 	char dossier[100];
-//	char deuxieme_dossier[100];
-//	char troisieme_dossier[100];
 	int ret,i; 
 	pthread_t pth;
 	
 	
-	// On récupèrere le contenu du fichier dans un buffer
+	// Save the fileconf in a buffer 
 	fichier_conf=fopen("flashbin.conf", "r");
 	if(fichier_conf==NULL)
 		sys_log("Impossible d'ouvrir le fichier de configuration");
@@ -94,7 +84,7 @@ void fichier_configuration()
 		
 		temp=strstr(buffer, "[partitions]");
 		
-		// On recupére le nom de chaque dossier à "monitorer"
+		// Read the buffer to know the folder to audit
 		temp=strstr(temp,"/");
 		i=0;
 		strcpy(&dossier[0], temp);
@@ -114,7 +104,6 @@ void fichier_configuration()
 		}
 
 		temp=strstr(temp+strlen(deuxieme_dossier),"/");
-		//coupe_nom(troisieme_dossier,temp);
 		i=0;
 		strcpy(&dossier[0], temp);
 		while(dossier[i] != ' ')
@@ -126,7 +115,7 @@ void fichier_configuration()
 	
 		printf("%s\n%s\n%s\n", premier_dossier, deuxieme_dossier, troisieme_dossier);
 
-		// On met un thread pour chaque dossier
+		// Create a thread for each folders, and un specific thread for synchronization
 		pthread_create(&pth, NULL, (void *) verification, premier_dossier);
 		pthread_create(&pth, NULL, (void *) verification, deuxieme_dossier);
 		pthread_create(&pth, NULL, (void *) verification, troisieme_dossier);
@@ -151,20 +140,21 @@ struct sigaction sig;
   sigaction(SIGHUP, &sig, NULL); 
   sigaction(SIGUSR1, &sig, NULL); 
   
-  // On lit dans la structure stat la date de modification des dossiers
+  // Check a first time in the structure stat to have a time reference
   stat(dossier, &statbuf_1);
   time_1=ctime(&statbuf_1.st_mtime);
   strcpy(&temporaire[0], time_1);
 
 	while(1)
    		{
+                // Call modification.sh to know if the sub-folder have been changed
 		 sprintf(modification, "./modification.sh %s", dossier);
                  	if(system(modification)==1) sys_log("Impossible de lancer le script de modification");
                  stat(dossier, &statbuf_1);
     	         time_1=ctime(&statbuf_1.st_mtime);
    		 printf("%s %s",dossier, time_1);
 	  		
-			//Si le dossier est modifié
+			// If the folder has been changed
 			if(strcmp(time_1, temporaire) != 0)
 			{
 			ecrire_dans_log(dossier);
@@ -188,7 +178,7 @@ void ecrire_dans_log(char *dossier)
 	char *way_t=(char *)malloc(sizeof(char));
 	log_fic *l=(log_fic *)malloc(sizeof(log_fic));
 	
-	//On récupèree le fichier dans un buffer pour traitement
+	// Stock the file log in a buffer
 	strcpy(buffer_temp, "");
 	strcpy(buffer, "");
 	
@@ -211,7 +201,6 @@ void ecrire_dans_log(char *dossier)
 		strncpy(l->way,way_t,17);
 
 		dos_bin=NULL;
-		taille=strlen(buffer); // On stocke la premiÃƒÂ¨re taille du buffer
 		dos_bin=strstr(buffer, premier_dossier)+strlen(premier_dossier);
 		strncpy(nombre, dos_bin,1);
 
@@ -256,8 +245,6 @@ void ecrire_dans_log(char *dossier)
 		fclose(fichier_log);
 				pthread_mutex_unlock (& mutex_fichier_log);
 		
-		//free(way_t);
-		//free(dos_bin);
 		free(l);
 		free(nombre);
 	}
@@ -266,16 +253,29 @@ void ecrire_dans_log(char *dossier)
 
 void *synchronisation()
 {
+    int ret;
 	FILE * fichier_syn;
+    FILE * fichier_log;
+    char buffer[BUFSIZ];
 
 	while(1)
 	{
 		sleep(30);
-		if( (fichier_syn=fopen("synchronisation.run", "r")) == NULL)
-		{	
-		fichier_syn=fopen("synchronisation.run", "w");
-		fclose(fichier_syn);
-		system("./flashbin.sh synchronize && rm synchronisation.run");
-		}
+        
+            pthread_mutex_lock (& mutex_fichier_log);
+        	fichier_log=fopen("flashbin.log", "r");
+	        ret=fread(buffer,1,sizeof(buffer) ,fichier_log);
+        	fclose(fichier_log);
+	        pthread_mutex_unlock (& mutex_fichier_log);
+		
+		        if(strstr(buffer, "no") != NULL)
+                {
+                         if( (fichier_syn=fopen("synchronisation.run", "r")) == NULL)
+		                 {	
+	                        fichier_syn=fopen("synchronisation.run", "w");
+		                    fclose(fichier_syn);
+	                    	system("./flashbin.sh synchronize");
+		                 }
+                }
 	}
 }
