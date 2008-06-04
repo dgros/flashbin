@@ -18,8 +18,9 @@ int main(int argc, char *argv[])
 	FILE *fichier_log;
 	int ret, taille;
 	log_fic *l=(log_fic *)malloc(sizeof(log_fic));
-	
-	if(argv[1]== "flash")
+
+
+	if( (strcmp(argv[1], "flash")) == 0 )
 		strcpy(l->way,"way = flashtodisk");
 	else
 		strcpy(l->way,"way = disktoflash");
@@ -28,10 +29,10 @@ int main(int argc, char *argv[])
 	strcpy(l->debut,"#flashbin.log\n#Synchronisation\nsynchronized =");
 	strcpy(l->synch,"yes");
 	strcpy(l->path, "[paths]");
-	// Create flashbin.log if it does'nt exist.
+	// Create flashbin.log if it doesn't exist.
 	strcpy(l->bin,"/usr/bin =");
 	strcpy(l->lib,"/usr/lib =");
-	strcpy(l->var,"/var =");
+	strcpy(l->var,"/var/lib =");
 	l->b_m=0;
 	l->l_m=0;
 	l->v_m=0;
@@ -40,9 +41,9 @@ int main(int argc, char *argv[])
 	
 	taille=strlen(fichier);
 	
-	if((fichier_log=fopen("flashbin.log", "r"))==NULL)
+	if((fichier_log=fopen("/var/log/flashbin.log", "r"))==NULL)
 	{
-		fichier_log=fopen("flashbin.log", "w");
+		fichier_log=fopen("/var/log/flashbin.log", "w");
 		if(fichier_log==NULL)
 		{
 			sys_log("Impossible de créer un fichier dans /var/log/");
@@ -74,7 +75,7 @@ void fichier_configuration()
 	
 	
 	// Save the fileconf in a buffer 
-	fichier_conf=fopen("flashbin.conf", "r");
+	fichier_conf=fopen("/etc/flashbin.conf", "r");
 	if(fichier_conf==NULL)
 		sys_log("Impossible d'ouvrir le fichier de configuration");
 	else 
@@ -148,7 +149,7 @@ struct sigaction sig;
 	while(1)
    		{
                 // Call modification.sh to know if the sub-folder have been changed
-		 sprintf(modification, "./modification.sh %s", dossier);
+		 sprintf(modification, "/usr/local/bin/modification.sh %s", dossier);
                  	if(system(modification)==1) sys_log("Impossible de lancer le script de modification");
                  stat(dossier, &statbuf_1);
     	         time_1=ctime(&statbuf_1.st_mtime);
@@ -183,7 +184,7 @@ void ecrire_dans_log(char *dossier)
 	strcpy(buffer, "");
 	
 	pthread_mutex_lock (& mutex_fichier_log);
-	fichier_log=fopen("flashbin.log", "r");
+	fichier_log=fopen("/var/log/flashbin.log", "r");
 	
 	if(fichier_log==NULL)
 	{
@@ -240,7 +241,7 @@ void ecrire_dans_log(char *dossier)
 	
 		taille=strlen(buffer);
 				pthread_mutex_lock (& mutex_fichier_log);
-	    fichier_log=fopen("flashbin.log", "w");
+	    fichier_log=fopen("/var/log/flashbin.log", "w");
 		ret=fwrite(buffer,1,taille ,fichier_log);
 		fclose(fichier_log);
 				pthread_mutex_unlock (& mutex_fichier_log);
@@ -260,21 +261,21 @@ void *synchronisation()
 
 	while(1)
 	{
-		sleep(30);
+		sleep(100);
         
             pthread_mutex_lock (& mutex_fichier_log);
-        	fichier_log=fopen("flashbin.log", "r");
+        	fichier_log=fopen("/var/log/flashbin.log", "r");
 	        ret=fread(buffer,1,sizeof(buffer) ,fichier_log);
         	fclose(fichier_log);
 	        pthread_mutex_unlock (& mutex_fichier_log);
 		
 		        if(strstr(buffer, "no") != NULL)
                 {
-                         if( (fichier_syn=fopen("synchronisation.run", "r")) == NULL)
+                         if( (fichier_syn=fopen("/var/run/synchronisation.run", "r")) == NULL)
 		                 {	
-	                        fichier_syn=fopen("synchronisation.run", "w");
+	                        fichier_syn=fopen("/var/run/synchronisation.run", "w");
 		                    fclose(fichier_syn);
-	                    	system("./flashbin.sh synchronize");
+	                    	system("/usr/local/bin/flashbin.sh synchronize");
 		                 }
                 }
 	}
