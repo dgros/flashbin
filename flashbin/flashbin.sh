@@ -102,21 +102,15 @@ device=$1
 
 # Slackware kernel 2.6.24.5
 #flashbin_jffs2_table=`dmesg | tail -n10 | grep block2mtd | grep erase_size | grep "\[d:" | cut -d":" -f2 | cut -b5 | tr '\n' ' '`
-# Slackware kernel 2.6.24.5
 #flashbin_mt_devices=`dmesg | tail -n10 | grep block2mtd | grep erase_size | grep "\[d:" | cut -d":" -f2 | cut -d" " -f2 | tr '\n' ' '`
 
 # Debian testing kernel 2.6.25 & 2.6.26
 flashbin_mt_devices=`dmesg | tail -n10 | grep block2mtd | grep erase_size | cut -d":" -f2 | cut -d" " -f2 | tr '\n' ' '`
-
-# Debian testing kernel 2.6.25 & 2.6.26
 flashbin_jffs2_table=`dmesg | tail -n10 | grep block2mtd | grep erase_size |  cut -d":" -f2 | cut -d" " -f2 | cut -b4 | tr '\n' ' '`
 
 mount_point=`sed -n '/\[partitions\]/,/\[\/partitions\]/{//d;p}' $flashbin_configfile | awk '{ print $2 }' | tr '\n' ' ' `
-
 partitions=`sed -n '/\[partitions\]/,/\[\/partitions\]/{//d;p}' $flashbin_configfile | awk '{ print $1 }' | tr '\n' ' ' `
-
 partitions_type=`sed -n '/\[partitions\]/,/\[\/partitions\]/{//d;p}' $flashbin_configfile | awk '{ print $3 }' | tr '\n' ' ' `
-
 flashbin_rbind_table=`sed -n '/\[rbind_table\]/,/\[\/rbind_table\]/{//d;p}' $flashbin_configfile | awk '{ print $2 }' | tr '\n' ' ' `
 
 dup="dup"
@@ -139,9 +133,9 @@ case "$j" in
      ;;
      jffs2)
           flashbin_mtdblock=`echo $flashbin_jffs2_table | cut -d" " -f $compteur`
-	      flashbin_partition="/dev/mtdblock$flashbin_mtdblock"
+	  flashbin_partition="/dev/mtdblock$flashbin_mtdblock"
           mount --rbind $flashbin_rbind_mountpoint $flashbin_mountpoint$dup 
-	      mount -t jffs2 $flashbin_partition $flashbin_rbind_mountpoint && mount --rbind $flashbin_rbind_mountpoint $flashbin_mountpoint &
+	  mount -t jffs2 $flashbin_partition $flashbin_rbind_mountpoint && mount --rbind $flashbin_rbind_mountpoint $flashbin_mountpoint &
      ;;
      ext3)
           mount --rbind $flashbin_rbind_mountpoint $flashbin_mountpoint$dup
@@ -173,9 +167,8 @@ flashbin_synchronize()
 read_serial=`sed -n '/\[serial\]/,/\[\/serial\]/{//d;p}' $flashbin_configfile`
 variable=`ls /sys/block | grep sd?*`
 set $variable
-slashetoile="/*"
-dup="dup"
 serial=1
+flag_key="false"
 
 while [ -n "$1" ]
 do
@@ -184,13 +177,25 @@ do
 
   if  [ "$serial" = "$read_serial" ]
   then
-    export     flag_key="true"
+    export flag_key="true"
+    break
+  else
+     flashbin_device="erreur";
+  fi # end of serial detection
+     shift 1
+done
 
+
+     slashetoile="/*"
+     dup="dup"
      flashbin_synchronize_flag=`grep "synchronized" $flashbin_logfile | cut -d"=" -f2`
-     if [ "$flashbin_synchronize_flag" = yes ]
+
+     if [ "$flashbin_synchronize_flag" = "yes" ]
      then
         return 0
-     else
+     elif [ "$flashbin_synchronize_flag" = "no" -a "$flag_key" = "true" ]
+     then
+
         flashbin_synchronize_way=`grep "way" $flashbin_logfile | cut -d"=" -f2`
         flashbin_path_to_synchonize=`sed -n '/\[paths\]/,/\[\/paths\]/{//d;p}' $flashbin_logfile | grep 1 | awk '{ print $1 }' | tr '\n' ' ' `
 
@@ -198,7 +203,7 @@ do
 	killall -SIGUSR1 flashbin  
 
         # synchronisation
-        if [ "$flashbin_synchronize_way"="flashtodisk" ]
+        if [ $flashbin_synchronize_way = "flashtodisk" ]
         then
            for i in $flashbin_path_to_synchonize
            do
@@ -207,35 +212,32 @@ do
            		dir_2=$dir_3$dup
            		echo "cp flashtodisk $dir_1 to $dir_2"
            		cp -ru $dir_1 $dir_2
-	       done
-        elif [ "$flashbin_synchronize_way"="disktoflash" ]
+	   done
+        fi
+
+        if  [ $flashbin_synchronize_way = "disktoflash" ]
         then
     	   for i in $flashbin_path_to_synchonize
 	       do
-                dir_2=`sed -n '/\[rbind_table\]/,/\[\/rbind_table\]/{//d;p}' $flashbin_configfile | grep "$i" | awk '{ print $2 }'`
+	                dir_2=`sed -n '/\[rbind_table\]/,/\[\/rbind_table\]/{//d;p}' $flashbin_configfile | grep "$i" | awk '{ print $2 }'`
            		dir_3=$dir_2$dup
            		dir_1=$dir_3$slashetoile
-                echo "cp disktoflash  $dir_1 to $dir_2"
+	                echo "cp disktoflash  $dir_1 to $dir_2"
         		cp -ru $dir_1 $dir_2
            done
         fi
 
-     
+     else
+	echo "Key not mounted, abording synchonisation"
 
 
      fi #end of synchonize_flag = yes
 
-    break
-  else
-     flashbin_device="erreur";
-  fi # end of serial detection
-     shift 1
 
-  if [ -f  $synchronisation_run_file ]
+  if [ -f $synchronisation_run_file ]
   then
     	  rm $synchronisation_run_file
   fi
-done
 
 }
 
