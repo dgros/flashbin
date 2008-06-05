@@ -168,7 +168,6 @@ read_serial=`sed -n '/\[serial\]/,/\[\/serial\]/{//d;p}' $flashbin_configfile`
 variable=`ls /sys/block | grep sd?*`
 set $variable
 serial=1
-flag_key="false"
 
 while [ -n "$1" ]
 do
@@ -177,30 +176,20 @@ do
 
   if  [ "$serial" = "$read_serial" ]
   then
-    export flag_key="true"
-    break
-  else
-     flashbin_device="erreur";
-  fi # end of serial detection
-     shift 1
-done
-
-
+     echo "Key found"
      slashetoile="/*"
      dup="dup"
      flashbin_synchronize_flag=`grep "synchronized" $flashbin_logfile | cut -d"=" -f2`
 
-     if [ "$flashbin_synchronize_flag" = "yes" ]
+     if [ $flashbin_synchronize_flag = "yes" ]
      then
         return 0
-     elif [ "$flashbin_synchronize_flag" = "no" -a "$flag_key" = "true" ]
+     elif [ $flashbin_synchronize_flag = "no" ]
      then
 
         flashbin_synchronize_way=`grep "way" $flashbin_logfile | cut -d"=" -f2`
         flashbin_path_to_synchonize=`sed -n '/\[paths\]/,/\[\/paths\]/{//d;p}' $flashbin_logfile | grep 1 | awk '{ print $1 }' | tr '\n' ' ' `
-
-    # Generation of a new logfile
-	killall -SIGUSR1 flashbin  
+        echo "Synchronizing $flashbin_path_to_synchonize"
 
         # synchronisation
         if [ $flashbin_synchronize_way = "flashtodisk" ]
@@ -226,18 +215,25 @@ done
         		cp -ru $dir_1 $dir_2
            done
         fi
-
      else
-	echo "Key not mounted, abording synchonisation"
-
+			echo "No rule for this case"
 
      fi #end of synchonize_flag = yes
 
+    break
+  else
+     flashbin_device="erreur";
+     echo "key not find"
+  fi # end of serial detection
+     shift 1
+done
 
   if [ -f $synchronisation_run_file ]
   then
     	  rm $synchronisation_run_file
   fi
+    # Generation of a new logfile
+	killall -SIGUSR1 flashbin  
 
 }
 
