@@ -19,7 +19,6 @@ int main(int argc, char *argv[])
 	int ret, taille;
 	log_fic *l=(log_fic *)malloc(sizeof(log_fic));
 
-
 	if( (strcmp(argv[1], "flash")) == 0 )
 		strcpy(l->way,"way = flashtodisk");
 	else
@@ -118,10 +117,14 @@ void fichier_configuration()
 
 		// Create a thread for each folders, and un specific thread for synchronization
 		pthread_create(&pth, NULL, (void *) verification, premier_dossier);
+		pthread_detach(pth);
 		pthread_create(&pth, NULL, (void *) verification, deuxieme_dossier);
+		pthread_detach(pth);
 		pthread_create(&pth, NULL, (void *) verification, troisieme_dossier);
+		pthread_detach(pth);
 		pthread_create(&pth, NULL, (void *) synchronisation , NULL);
-		pthread_exit(NULL);
+		pthread_detach(pth);
+//		pthread_exit(NULL);
 	}
 }
 
