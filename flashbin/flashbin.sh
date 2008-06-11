@@ -237,11 +237,6 @@ done
 
 }
 
-flashbin_status()
-{
-return 0
-}
-
 
 
 if [ "$(id -u)" != "0" ]; then
@@ -272,7 +267,7 @@ case "$1" in
      ;;
      *)
         echo "FlashBin v0.01"
-        echo "Usage : [start|synchronize|status|configure]"
+        echo "Usage : [start|synchronize|configure]"
      ;;
 esac
 fi
