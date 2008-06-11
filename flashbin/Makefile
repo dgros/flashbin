@@ -14,5 +14,8 @@ clean:
 	rm *.o
 	rm $(CIB)
 
-
-
+install:
+	cp flashbin.sh /usr/local/bin
+	cp flashbin /usr/local/bin
+	cp flashbin.conf /etc/flashbin.conf
+	cp modification.sh /usr/local/bin
